@@ -1,7 +1,7 @@
 import time
 import json
 import logging
-from os import makedirs, path
+from os import makedirs, path, remove
 from subprocess import Popen
 from threading import Thread
 from socket import socket, AF_UNIX, SOCK_DGRAM
@@ -64,6 +64,7 @@ class Manager():
         for port, server in self._servers.items():
             server.shutdown()
         self._sock.close()
+        remove(self._manager_addr)
 
     def add(self, server):
         if server.port in self._servers:
