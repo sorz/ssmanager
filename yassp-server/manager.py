@@ -40,6 +40,12 @@ class Server():
         self.is_running = False
         self._proc.terminate()
 
+    def __eq__(self, other):
+        if not isinstance(other, Server):
+            return False
+        return self.port == other.port and self._udp == other._udp \
+               and self._config == other._config
+
 
 class Manager():
     def __init__(self, manager_addr='/tmp/manager.sock', temp_dir='/tmp/shadowsocks/'):
@@ -68,14 +74,25 @@ class Manager():
 
     def add(self, server):
         if server.port in self._servers:
-            if server == self._servers[server.port]:
-                logging.debug('Same configuration, ignore.')
-                return True
-            else:
-                logging.debug('Conflicting server found, shutdown it.')
-                server.shutdown()
+            raise ServerAlreadyExistError
         self._servers[server.port] = server
         server.start(self._manager_addr, self._temp_dir)
+
+    def update(self, servers):
+        servers = {s.port: s for s in servers}
+        old_ports = set(self._servers.keys())
+        new_ports = set(servers.keys())
+
+        for port in old_ports - new_ports:
+            self.remove(port)
+
+        for port in new_ports - old_ports:
+            self.add(servers[port])
+
+        for port in new_ports & old_ports:
+            if servers[port] != self._servers[port]:
+                self.remove(port)
+                self.add(servers[port])
 
     def remove(self, server):
         if isinstance(server, int):
@@ -114,4 +131,8 @@ class Manager():
                         server.shutdown()
                         server.start(self._manager_addr, self._temp_dir)
             time.sleep(CHECK_PERIOD)
+
+
+class ServerAlreadyExistError(Exception):
+    pass
 
