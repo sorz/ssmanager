@@ -2,10 +2,14 @@ import json
 import logging
 from os import makedirs, path
 from subprocess import Popen
+from threading import Thread
 from socket import socket, AF_UNIX, SOCK_DGRAM
 
 
 class Server():
+    traffic_total = 0
+    traffic_recorded = 0
+
     def __init__(self, port, password, method, host='0.0.0.0', timeout=10,
                  udp=True, ota=False, fast_open=True):
         self.port = port
@@ -38,8 +42,12 @@ class Manager():
 
         self._sock = socket(AF_UNIX, SOCK_DGRAM)
         self._sock.bind(manager_addr)
+        self._thread = Thread(target=self._receiving_stat, daemon=True)
 
         self._servers = dict()
+
+    def start(self):
+        self._thread.start()
 
     def close(self):
         for port, server in self._servers.items():
@@ -56,5 +64,22 @@ class Manager():
                 server.shutdown()
         self._servers[server.port] = server
         server.start(self._manager_addr, self._temp_dir)
-        print(self._sock.recvmsg(256))
+
+    def _receiving_stat(self):
+        while True:
+            data, _, _, _ = self._sock.recvmsg(256)
+            if data[-1] == 0:  # Remove \x00 tail
+                data = data[:-1]
+            cmd, data = data.decode().split(':', 1)
+            if cmd != 'stat':
+                logging.info('Unknown cmd received from ss-server: ' + cmd)
+                continue
+
+            stat = json.loads(data.strip())
+            for port, traffic in stat.items():
+                port = int(port)
+                if port not in self._servers:
+                    logging.warning('Stat from unknown port (%s) received.' % port)
+                    continue
+                self._servers[port].traffic_total = traffic
 

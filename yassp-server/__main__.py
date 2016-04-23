@@ -14,9 +14,11 @@ def get_args():
 def main():
     args = get_args()
     manager = Manager()
+    manager.start()
     server = Server(5123, 'test', 'chacha20')
     try:
-        print(manager.add(server))
+        manager.add(server)
+        manager._thread.join()
     finally:
         manager.close()
 
