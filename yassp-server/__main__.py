@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from argparse import ArgumentParser
 
-from .manager import Manager
+from .manager import Manager, Server
 
 
 def get_args():
@@ -13,9 +13,12 @@ def get_args():
 
 def main():
     args = get_args()
-    manager = Manager(args.address)
-    print(manager.add(5123, 'test', 'chacha20'))
-    manager.close()
+    manager = Manager()
+    server = Server(5123, 'test', 'chacha20')
+    try:
+        print(manager.add(server))
+    finally:
+        manager.close()
 
 
 if __name__ == '__main__':
