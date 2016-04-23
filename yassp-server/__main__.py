@@ -18,9 +18,9 @@ def main():
     server = Server(5123, 'test', 'chacha20')
     try:
         manager.add(server)
-        manager._thread.join()
+        manager._stat_thread.join()
     finally:
-        manager.close()
+        manager.stop()
 
 
 if __name__ == '__main__':

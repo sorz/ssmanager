@@ -1,3 +1,4 @@
+import time
 import json
 import logging
 from os import makedirs, path
@@ -6,9 +7,12 @@ from threading import Thread
 from socket import socket, AF_UNIX, SOCK_DGRAM
 
 
+TIMEOUT = 60  # Must > 30
+CHECK_PERIOD = 180
+
 class Server():
-    traffic_total = 0
-    traffic_recorded = 0
+    traffic = 0
+    is_running = False
 
     def __init__(self, port, password, method, host='0.0.0.0', timeout=10,
                  udp=True, ota=False, fast_open=True):
@@ -28,9 +32,12 @@ class Server():
             args.append('-u')
 
         self._proc = Popen(args)
+        self.is_running = True
+        self.last_active_time = time.time()
 
     def shutdown(self):
         """Shutdown this server."""
+        self.is_running = False
         self._proc.terminate()
 
 
@@ -42,14 +49,18 @@ class Manager():
 
         self._sock = socket(AF_UNIX, SOCK_DGRAM)
         self._sock.bind(manager_addr)
-        self._thread = Thread(target=self._receiving_stat, daemon=True)
+        self._stat_thread = Thread(target=self._receiving_stat, daemon=True)
+        self._restart_thread = Thread(target=self._restarting_inactive_servers, daemon=True)
 
         self._servers = dict()
 
     def start(self):
-        self._thread.start()
+        self._is_running = True
+        self._stat_thread.start()
+        self._restart_thread.start()
 
-    def close(self):
+    def stop(self):
+        self._is_running = False
         for port, server in self._servers.items():
             server.shutdown()
         self._sock.close()
@@ -65,8 +76,17 @@ class Manager():
         self._servers[server.port] = server
         server.start(self._manager_addr, self._temp_dir)
 
+    def remove(self, server):
+        if isinstance(server, int):
+            server = self._servers[server]
+        del self._servers[server.port]
+        server.shutdown()
+
+    def stat(self):
+        return {p: s.traffic for p, s in self._servers.items()}
+
     def _receiving_stat(self):
-        while True:
+        while self._is_running:
             data, _, _, _ = self._sock.recvmsg(256)
             if data[-1] == 0:  # Remove \x00 tail
                 data = data[:-1]
@@ -81,5 +101,16 @@ class Manager():
                 if port not in self._servers:
                     logging.warning('Stat from unknown port (%s) received.' % port)
                     continue
-                self._servers[port].traffic_total = traffic
+                self._servers[port].traffic = traffic
+                self._servers[port].last_active_time = time.time()
+
+    def _restarting_inactive_servers(self):
+        while self._is_running:
+            for port, server in self._servers.items():
+                if server.is_running:
+                    if time.time() - server.last_active_time > TIMEOUT:
+                        logging.warning('Server (:%s) is inactive, restarting it...')
+                        server.shutdown()
+                        server.start(self._manager_addr, self._temp_dir)
+            time.sleep(CHECK_PERIOD)
 
