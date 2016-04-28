@@ -22,7 +22,7 @@ class Server():
                             server=host, auth=ota, timeout=timeout,
                             fast_open=fast_open)
 
-    def start(self, manager_addr, temp_dir, ss_bin='/usr/bin/ss-server'):
+    def start(self, manager_addr, temp_dir, ss_bin):
         config_path = path.join(temp_dir, 'ss-%s.json' % self.port)
         with open(config_path, 'w') as f:
             json.dump(self._config, f)
@@ -48,7 +48,9 @@ class Server():
 
 
 class Manager():
-    def __init__(self, manager_addr='/tmp/manager.sock', temp_dir='/tmp/shadowsocks/'):
+    def __init__(self, manager_addr='/tmp/manager.sock',
+                 temp_dir='/tmp/shadowsocks/', ss_bin='/usr/bin/ss-server'):
+        self._ss_bin = ss_bin
         self._manager_addr = manager_addr
         self._temp_dir = temp_dir
         makedirs(temp_dir, exist_ok=True)
@@ -76,7 +78,7 @@ class Manager():
         if server.port in self._servers:
             raise ServerAlreadyExistError
         self._servers[server.port] = server
-        server.start(self._manager_addr, self._temp_dir)
+        server.start(self._manager_addr, self._temp_dir, self._ss_bin)
 
     def update(self, servers):
         servers = {s.port: s for s in servers}
@@ -128,8 +130,8 @@ class Manager():
                 if server.is_running:
                     if time.time() - server.last_active_time > TIMEOUT:
                         logging.warning('Server (:%s) is inactive, restarting it...')
-                        server.shutdown()
-                        server.start(self._manager_addr, self._temp_dir)
+                        self.remove(server)
+                        self.add(server)
             time.sleep(CHECK_PERIOD)
 
 
