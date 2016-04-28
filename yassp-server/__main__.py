@@ -8,9 +8,11 @@ from .manager import Manager, Server
 
 def get_args():
     parser = ArgumentParser(description='YaSSP-Server')
-    parser.add_argument('-S', '--ss-server', dest='ss_bin',
+    parser.add_argument('-S', '--ss-bin',
                         default='/usr/bin/ss-server',
                         metavar='PATH-TO-SS-SERVER')
+    parser.add_argument('-P', '--print-ss-log',
+                        action='store_true')
     parser.add_argument('-v', '--log-level',
 			default=logging.INFO, type=int,
 			metavar='LOG-LEVEL',
@@ -22,7 +24,7 @@ def main():
     args = get_args()
     logging.basicConfig(level=args.log_level,
                         format='%(asctime)s %(levelname)-s: %(message)s')
-    manager = Manager()
+    manager = Manager(ss_bin=args.ss_bin, print_ss_log=args.print_ss_log)
     try:
         manager.start()
         server = Server(5123, 'test', 'chacha20')

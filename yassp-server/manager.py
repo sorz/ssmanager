@@ -1,8 +1,8 @@
+import os
 import time
 import json
 import logging
-from os import makedirs, path, remove
-from subprocess import Popen
+from subprocess import Popen, DEVNULL
 from threading import Thread
 from socket import socket, AF_UNIX, SOCK_DGRAM
 
@@ -22,8 +22,8 @@ class Server():
                             server=host, auth=ota, timeout=timeout,
                             fast_open=fast_open)
 
-    def start(self, manager_addr, temp_dir, ss_bin):
-        config_path = path.join(temp_dir, 'ss-%s.json' % self.port)
+    def start(self, manager_addr, temp_dir, ss_bin, print_log):
+        config_path = os.path.join(temp_dir, 'ss-%s.json' % self.port)
         with open(config_path, 'w') as f:
             json.dump(self._config, f)
 
@@ -31,7 +31,11 @@ class Server():
         if self._udp:
             args.append('-u')
 
-        self._proc = Popen(args)
+        if print_log:
+            output = None  # inherited from self
+        else:
+            output = DEVNULL
+        self._proc = Popen(args, stdout=output, stderr=output)
         self.is_running = True
         self.last_active_time = time.time()
 
@@ -48,37 +52,44 @@ class Server():
 
 
 class Manager():
-    def __init__(self, manager_addr='/tmp/manager.sock',
+    _servers = dict()
+    _sock = None
+
+    def __init__(self, print_ss_log=True, manager_addr='/tmp/manager.sock',
                  temp_dir='/tmp/shadowsocks/', ss_bin='/usr/bin/ss-server'):
+        self._print_ss_log = print_ss_log
         self._ss_bin = ss_bin
         self._manager_addr = manager_addr
         self._temp_dir = temp_dir
-        makedirs(temp_dir, exist_ok=True)
 
-        self._sock = socket(AF_UNIX, SOCK_DGRAM)
-        self._sock.bind(manager_addr)
         self._stat_thread = Thread(target=self._receiving_stat, daemon=True)
         self._restart_thread = Thread(target=self._restarting_inactive_servers, daemon=True)
 
-        self._servers = dict()
-
     def start(self):
+        os.makedirs(self._temp_dir, exist_ok=True)
+        self._sock = socket(AF_UNIX, SOCK_DGRAM)
+        self._sock.bind(self._manager_addr)
+
         self._is_running = True
         self._stat_thread.start()
         self._restart_thread.start()
+        logging.info('Manager started.')
 
     def stop(self):
         self._is_running = False
         for port, server in self._servers.items():
             server.shutdown()
-        self._sock.close()
-        remove(self._manager_addr)
+        if self._sock is not None:
+            self._sock.close()
+        if os.path.exists(self._manager_addr):
+            os.remove(self._manager_addr)
 
     def add(self, server):
         if server.port in self._servers:
             raise ServerAlreadyExistError
         self._servers[server.port] = server
-        server.start(self._manager_addr, self._temp_dir, self._ss_bin)
+        server.start(self._manager_addr, self._temp_dir, self._ss_bin,
+                     self._print_ss_log)
 
     def update(self, servers):
         servers = {s.port: s for s in servers}
