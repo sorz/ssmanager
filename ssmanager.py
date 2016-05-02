@@ -22,7 +22,11 @@ class Server():
                             server=host, auth=ota, timeout=timeout,
                             fast_open=fast_open)
 
-    def start(self, manager_addr, temp_dir, ss_bin, print_log):
+    def start(self, manager_addr, temp_dir, ss_bin, print_log=None):
+        """Start `ss-server` process.
+
+        Not need to call it if you are using `Manager`.
+        """
         config_path = os.path.join(temp_dir, 'ss-%s.json' % self.port)
         with open(config_path, 'w') as f:
             json.dump(self._config, f)
@@ -40,7 +44,10 @@ class Server():
         self.last_active_time = time.time()
 
     def shutdown(self):
-        """Shutdown this server."""
+        """Stop `ss-server` process.
+
+        Not need to call it if you are using `Manager`.
+        """
         self.is_running = False
         self._proc.terminate()
 
@@ -85,6 +92,10 @@ class Manager():
             os.remove(self._manager_addr)
 
     def add(self, server):
+        """Add & start a ss-server.
+
+        `ss-server` process will start before this method return.
+        """
         if server.port in self._servers:
             raise ServerAlreadyExistError
         self._servers[server.port] = server
@@ -92,6 +103,10 @@ class Manager():
                      self._print_ss_log)
 
     def update(self, servers):
+        """Add & remove a set of servers in batch.
+
+        The server list inside `Manager` will be replaced by `servers`.
+        """
         servers = {s.port: s for s in servers}
         old_ports = set(self._servers.keys())
         new_ports = set(servers.keys())
@@ -108,12 +123,14 @@ class Manager():
                 self.add(servers[port])
 
     def remove(self, server):
+        """Stop a server and remove from internal list."""
         if isinstance(server, int):
             server = self._servers[server]
         del self._servers[server.port]
         server.shutdown()
 
     def stat(self):
+        """Return a dict of { port_number: total_traffic_in_bytes }."""
         return {p: s.traffic for p, s in self._servers.items()}
 
     def _receiving_stat(self):
