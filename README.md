@@ -1,6 +1,7 @@
 # ssmanager
-The python module interact with server-mode
-[shadowsocks-libev](https://github.com/shadowsocks/shadowsocks-libev).
+A python module interact with manager-mode
+[shadowsocks-libev](https://github.com/shadowsocks/shadowsocks-libev)
+server.
 
 > Shadowsocks-libev consists of five components. ss-manager(1) is a controller
 > for multi-user management and traffic statistics, using UNIX domain socket
