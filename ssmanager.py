@@ -17,6 +17,7 @@ class Server():
     def __init__(self, port, password, method, host='0.0.0.0', timeout=10,
                  udp=True, ota=False, fast_open=True):
         self.port = port
+        self.host = host
         self._udp = udp
         self._config = dict(server_port=port, password=password, method=method,
                             server=host, auth=ota, timeout=timeout,
@@ -42,6 +43,7 @@ class Server():
         self._proc = Popen(args, stdout=output, stderr=output)
         self.is_running = True
         self.last_active_time = time.time()
+        logging.debug('ss-server at %s:%d started.' % (self.host, self.port))
 
     def shutdown(self):
         """Stop `ss-server` process.
@@ -50,6 +52,7 @@ class Server():
         """
         self.is_running = False
         self._proc.terminate()
+        logging.debug('ss-server at %s:%d stopped.' % (self.host, self.port))
 
     def __eq__(self, other):
         if not isinstance(other, Server):
