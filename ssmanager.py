@@ -11,11 +11,11 @@ TIMEOUT = 60  # Must > 30
 CHECK_PERIOD = 180
 
 class Server():
-    traffic = 0
-    is_running = False
 
     def __init__(self, port, password, method, host='0.0.0.0', timeout=10,
                  udp=True, ota=False, fast_open=True):
+        self.traffic = 0
+        self.is_running = False
         self.port = port
         self.host = host
         self._udp = udp
@@ -62,11 +62,11 @@ class Server():
 
 
 class Manager():
-    _servers = dict()
-    _sock = None
 
     def __init__(self, print_ss_log=True, manager_addr='/tmp/manager.sock',
                  temp_dir='/tmp/shadowsocks/', ss_bin='/usr/bin/ss-server'):
+        self._servers = dict()
+        self._sock = None
         self._print_ss_log = print_ss_log
         self._ss_bin = ss_bin
         self._manager_addr = manager_addr
