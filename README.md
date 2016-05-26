@@ -13,6 +13,12 @@ except it provide Python API instead of UNIX domain socket or UDP API.
 It has own implementation rather than communicate with `ss-manager`, hence
 the only dependence is `ss-server`.
 
+## Install
+
+```
+$ pip install git+https://github.com/sorz/ssmanager.git
+```
+
 ## Usage
 
 Example:
