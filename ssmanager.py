@@ -157,12 +157,15 @@ class Manager():
 
     def _restarting_inactive_servers(self):
         while self._is_running:
+            inactives = []
             for port, server in self._servers.items():
                 if server.is_running:
                     if time.time() - server.last_active_time > TIMEOUT:
+                        inactives.append(server)
                         logging.warning('Server (:%s) is inactive, restarting it...' % port)
-                        self.remove(server)
-                        self.add(server)
+            for server in inactives:
+                self.remove(server)
+                self.add(server)
             time.sleep(CHECK_PERIOD)
 
 
