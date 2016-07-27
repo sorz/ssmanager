@@ -2,7 +2,7 @@
 from distutils.core import setup
 
 setup(name="ssmanager",
-      version="0.1.0",
+      version="0.1.1",
       description="The python module interact with server-mode shadowsocks-libev.",
       author="Shell Chen",
       author_email="orz@sorz.org",
