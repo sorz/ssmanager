@@ -7,7 +7,7 @@ from threading import Thread
 from socket import socket, AF_UNIX, SOCK_DGRAM
 
 
-TIMEOUT = 60  # Must > 30
+TIMEOUT = 90  # Must > 30
 CHECK_PERIOD = 180
 
 class Server():
@@ -160,7 +160,7 @@ class Manager():
             for port, server in self._servers.items():
                 if server.is_running:
                     if time.time() - server.last_active_time > TIMEOUT:
-                        logging.warning('Server (:%s) is inactive, restarting it...')
+                        logging.warning('Server (:%s) is inactive, restarting it...' % port)
                         self.remove(server)
                         self.add(server)
             time.sleep(CHECK_PERIOD)
