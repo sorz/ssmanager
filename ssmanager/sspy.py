@@ -3,33 +3,14 @@ import time
 import json
 import logging
 from subprocess import Popen, DEVNULL
-from threading import Thread
+from threading import Thread, Event
 from socket import socket, AF_UNIX, SOCK_DGRAM
 
 from . import _Server, _Manager
 
 
-TIMEOUT = 90  # Must > 30
-CHECK_PERIOD = 180
-
-
 class Server(_Server):
-
-    def start(self, sock):
-        self.is_running = True
-        self.last_active_time = time.time()
-        sock.send(b'add: ' + json.dumps(self._config).encode())
-        if sock.recv(1506) != b'ok':
-            raise UnexpectedServerResponse()
-        logging.debug('ss-server at %s:%d started.' % (self.host, self.port))
-
-    def shutdown(self, sock):
-        self.is_running = False
-        sock.send(b'remove: {"server_port":%s}' % str(self.port).encode())
-        if sock.recv(1506) != b'ok':
-            raise UnexpectedServerResponse()
-        logging.debug('ss-server at %s:%d stopped.' % (self.host, self.port))
-
+    pass
 
 class Manager(_Manager):
 
@@ -42,8 +23,9 @@ class Manager(_Manager):
         self._print_ss_log = print_ss_log
         self._manager_addr = manager_addr
         self._client_addr = client_addr
+        self._ok = Event()
 
-        #self._stat_thread = Thread(target=self._receiving_stat, daemon=True)
+        self._recv_thread = Thread(target=self._receiving, daemon=True)
         #self._restart_thread = Thread(target=self._restarting_inactive_servers, daemon=True)
 
     def start(self):
@@ -58,12 +40,12 @@ class Manager(_Manager):
         self._sock = socket(AF_UNIX, SOCK_DGRAM)
         self._sock.bind(self._client_addr)
         self._sock.connect(self._manager_addr)
-        self._sock.send(b'remove: {"server_port": 8388}')
-        if self._sock.recv(1506) != b'ok':
-            raise UnexpectedServerResponse()
-
-        #self._stat_thread.start()
+        self._recv_thread.start()
         #self._restart_thread.start()
+
+        self._sock.send(b'remove: {"server_port": 8388}')
+        self._ok.wait()
+
         logging.info('Manager started.')
 
     def stop(self):
@@ -78,16 +60,26 @@ class Manager(_Manager):
             os.remove(self._client_addr)
 
     def _start_instance(self, server):
-        server.start(self._sock)
+        server.is_running = True
+        server.last_active_time = time.time()
+        self._sock.send(b'add: ' + json.dumps(server._config).encode())
+        self._ok.wait()
+        logging.debug('ss-server at %s:%d started.' % (server.host, server.port))
 
     def _stop_instance(self, server):
-        server.shutdown(self._sock)
+        server.is_running = False
+        self._sock.send(b'remove: {"server_port":%s}' % str(server.port).encode())
+        self._ok.wait()
+        logging.debug('ss-server at %s:%d stopped.' % (server.host, server.port))
 
-    def _receiving_stat(self):
+    def _receiving(self):
         while self._is_running:
-            data, _, _, _ = self._sock.recvmsg(256)
-            if data[-1] == 0:  # Remove \x00 tail
-                data = data[:-1]
+            data, _ = self._sock.recvfrom(2048)
+            print(data)
+            if data == b'ok':
+                self._ok.set()
+                continue
+
             cmd, data = data.decode().split(':', 1)
             if cmd != 'stat':
                 logging.info('Unknown cmd received from ss-server: ' + cmd)
@@ -102,22 +94,6 @@ class Manager(_Manager):
                 self._servers[port].traffic = traffic
                 self._servers[port].last_active_time = time.time()
 
-    def _restarting_inactive_servers(self):
-        while self._is_running:
-            inactives = []
-            for port, server in self._servers.items():
-                if server.is_running:
-                    if time.time() - server.last_active_time > TIMEOUT:
-                        inactives.append(server)
-                        logging.warning('Server (:%s) is inactive, restarting it...' % port)
-            for server in inactives:
-                self.remove(server)
-                self.add(server)
-            time.sleep(CHECK_PERIOD)
-
-
 class ServerAlreadyExistError(Exception):
     pass
 
-class UnexpectedServerResponse(Exception):
-    pass

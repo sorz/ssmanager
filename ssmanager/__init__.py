@@ -16,7 +16,7 @@ class _Server():
                             fast_open=fast_open)
 
     def __eq__(self, other):
-        if not isinstance(other, Server):
+        if not isinstance(other, _Server):
             return False
         return self.port == other.port and self._udp == other._udp \
                and self._config == other._config

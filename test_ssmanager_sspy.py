@@ -12,12 +12,12 @@ def main():
     try:
         manager.start()
         server = Server(5123, 'test', 'chacha20')
-        servers = [server, Server(5124, 'test', 'chacha20'),
+        servers = [server, Server(5124, 'test', 'aes-256-cfb'),
                    Server(5123, 'test', 'chacha20')]
         manager.add(server)
         time.sleep(5)
         manager.update(servers)
-        manager._stat_thread.join()
+        manager._recv_thread.join()
     except KeyboardInterrupt:
         logging.info('Stopped by ^C.')
     finally:
