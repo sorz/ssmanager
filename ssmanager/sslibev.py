@@ -6,22 +6,13 @@ from subprocess import Popen, DEVNULL
 from threading import Thread
 from socket import socket, AF_UNIX, SOCK_DGRAM
 
+from . import _Server, _Manager
+
 
 TIMEOUT = 90  # Must > 30
 CHECK_PERIOD = 180
 
-class Server():
-
-    def __init__(self, port, password, method, host='0.0.0.0', timeout=10,
-                 udp=True, ota=False, fast_open=True):
-        self.traffic = 0
-        self.is_running = False
-        self.port = port
-        self.host = host
-        self._udp = udp
-        self._config = dict(server_port=port, password=password, method=method,
-                            server=host, auth=ota, timeout=timeout,
-                            fast_open=fast_open)
+class Server(_Server):
 
     def start(self, manager_addr, temp_dir, ss_bin, print_log=None):
         """Start `ss-server` process.
@@ -54,18 +45,12 @@ class Server():
         self._proc.terminate()
         logging.debug('ss-server at %s:%d stopped.' % (self.host, self.port))
 
-    def __eq__(self, other):
-        if not isinstance(other, Server):
-            return False
-        return self.port == other.port and self._udp == other._udp \
-               and self._config == other._config
 
-
-class Manager():
+class Manager(_Manager):
 
     def __init__(self, print_ss_log=True, manager_addr='/tmp/manager.sock',
                  temp_dir='/tmp/shadowsocks/', ss_bin='/usr/bin/ss-server'):
-        self._servers = dict()
+        super().__init__()
         self._sock = None
         self._print_ss_log = print_ss_log
         self._ss_bin = ss_bin
@@ -76,65 +61,28 @@ class Manager():
         self._restart_thread = Thread(target=self._restarting_inactive_servers, daemon=True)
 
     def start(self):
+        super().start()
         os.makedirs(self._temp_dir, exist_ok=True)
         self._sock = socket(AF_UNIX, SOCK_DGRAM)
         self._sock.bind(self._manager_addr)
 
-        self._is_running = True
         self._stat_thread.start()
         self._restart_thread.start()
         logging.info('Manager started.')
 
     def stop(self):
-        self._is_running = False
-        for port, server in self._servers.items():
-            server.shutdown()
+        super().stop()
         if self._sock is not None:
             self._sock.close()
         if os.path.exists(self._manager_addr):
             os.remove(self._manager_addr)
 
-    def add(self, server):
-        """Add & start a ss-server.
-
-        `ss-server` process will start before this method return.
-        """
-        if server.port in self._servers:
-            raise ServerAlreadyExistError
-        self._servers[server.port] = server
+    def _start_instance(self, server):
         server.start(self._manager_addr, self._temp_dir, self._ss_bin,
                      self._print_ss_log)
 
-    def update(self, servers):
-        """Add & remove a set of servers in batch.
-
-        The server list inside `Manager` will be replaced by `servers`.
-        """
-        servers = {s.port: s for s in servers}
-        old_ports = set(self._servers.keys())
-        new_ports = set(servers.keys())
-
-        for port in old_ports - new_ports:
-            self.remove(port)
-
-        for port in new_ports - old_ports:
-            self.add(servers[port])
-
-        for port in new_ports & old_ports:
-            if servers[port] != self._servers[port]:
-                self.remove(port)
-                self.add(servers[port])
-
-    def remove(self, server):
-        """Stop a server and remove from internal list."""
-        if isinstance(server, int):
-            server = self._servers[server]
-        del self._servers[server.port]
+    def _stop_instance(self, server):
         server.shutdown()
-
-    def stat(self):
-        """Return a dict of { port_number: total_traffic_in_bytes }."""
-        return {p: s.traffic for p, s in self._servers.items()}
 
     def _receiving_stat(self):
         while self._is_running:
