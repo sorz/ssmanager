@@ -66,7 +66,7 @@ class Manager(_Manager):
 
     def _stop_instance(self, server):
         server.is_running = False
-        self._sock.send(b'remove: {"server_port":%s}' % str(server.port).encode())
+        self._sock.send(b'remove: {"server_port":' + str(server.port).encode() + b'}')
         self._ok.wait()
         logging.debug('ss-server at %s:%d stopped.' % (server.host, server.port))
 
