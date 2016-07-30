@@ -7,5 +7,5 @@ setup(name="ssmanager",
       author="Shell Chen",
       author_email="orz@sorz.org",
       url="https://github.com/sorz/ssmanager/",
-      py_modules=['ssmanager'])
+      packages=['ssmanager'])
 
