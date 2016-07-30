@@ -6,44 +6,11 @@ from subprocess import Popen, DEVNULL
 from threading import Thread
 from socket import socket, AF_UNIX, SOCK_DGRAM
 
-from . import _Server, _Manager
+from . import Server, _Manager
 
 
 TIMEOUT = 90  # Must > 30
 CHECK_PERIOD = 180
-
-class Server(_Server):
-
-    def start(self, manager_addr, temp_dir, ss_bin, print_log=None):
-        """Start `ss-server` process.
-
-        Not need to call it if you are using `Manager`.
-        """
-        config_path = os.path.join(temp_dir, 'ss-%s.json' % self.port)
-        with open(config_path, 'w') as f:
-            json.dump(self._config, f)
-
-        args = [ss_bin, '-c', config_path, '--manager-address', manager_addr]
-        if self._udp:
-            args.append('-u')
-
-        if print_log:
-            output = None  # inherited from self
-        else:
-            output = DEVNULL
-        self._proc = Popen(args, stdout=output, stderr=output)
-        self.is_running = True
-        self.last_active_time = time.time()
-        logging.debug('ss-server at %s:%d started.' % (self.host, self.port))
-
-    def shutdown(self):
-        """Stop `ss-server` process.
-
-        Not need to call it if you are using `Manager`.
-        """
-        self.is_running = False
-        self._proc.terminate()
-        logging.debug('ss-server at %s:%d stopped.' % (self.host, self.port))
 
 
 class Manager(_Manager):
@@ -78,11 +45,29 @@ class Manager(_Manager):
             os.remove(self._manager_addr)
 
     def _start_instance(self, server):
-        server.start(self._manager_addr, self._temp_dir, self._ss_bin,
-                     self._print_ss_log)
+        """Start `ss-server` process."""
+        config_path = os.path.join(self._temp_dir, 'ss-%s.json' % server.port)
+        with open(config_path, 'w') as f:
+            json.dump(server._config, f)
+
+        args = [self._ss_bin, '-c', config_path,
+                '--manager-address', self._manager_addr]
+        if server._udp:
+            args.append('-u')
+
+        if self._print_ss_log:
+            output = None  # inherited from self
+        else:
+            output = DEVNULL
+        server._proc = Popen(args, stdout=output, stderr=output)
+        server.is_running = True
+        logging.debug('ss-server at %s:%d started.' % (server.host, server.port))
 
     def _stop_instance(self, server):
-        server.shutdown()
+        """Stop `ss-server` process."""
+        server.is_running = False
+        server._proc.terminate()
+        logging.debug('ss-server at %s:%d stopped.' % (server.host, server.port))
 
     def _receiving_stat(self):
         while self._is_running:
@@ -101,7 +86,6 @@ class Manager(_Manager):
                     logging.warning('Stat from unknown port (%s) received.' % port)
                     continue
                 self._servers[port].traffic = traffic
-                self._servers[port].last_active_time = time.time()
 
     def _restarting_inactive_servers(self):
         while self._is_running:

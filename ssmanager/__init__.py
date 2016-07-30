@@ -1,13 +1,14 @@
 import logging
+import time
 
 
-class _Server():
+class Server():
     """Store configuration about one server instance."""
 
     def __init__(self, port, password, method, host='0.0.0.0', timeout=10,
                  udp=True, ota=False, fast_open=True):
-        self.traffic = 0
-        self.is_running = False
+        self._traffic = 0
+        self._is_running = False
         self.port = port
         self.host = host
         self._udp = udp
@@ -16,10 +17,28 @@ class _Server():
                             fast_open=fast_open)
 
     def __eq__(self, other):
-        if not isinstance(other, _Server):
+        if not isinstance(other, Server):
             return False
         return self.port == other.port and self._udp == other._udp \
                and self._config == other._config
+
+    @property
+    def is_running(self):
+        return self._is_running
+
+    @is_running.setter
+    def is_running(self, state):
+        self._is_running = state
+        self.last_active_time = time.time()
+
+    @property
+    def traffic(self):
+        return self._traffic
+
+    @traffic.setter
+    def traffic(self, traffic):
+        self._traffic = traffic
+        self.last_active_time = time.time()
 
 
 class _Manager():
@@ -85,4 +104,4 @@ class ServerAlreadyExistError(Exception):
     pass
 
 # Compatible with old API
-from .sslibev import Server, Manager
+from .sslibev import Manager

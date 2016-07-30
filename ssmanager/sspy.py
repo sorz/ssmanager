@@ -6,11 +6,8 @@ from subprocess import Popen, DEVNULL
 from threading import Thread, Event
 from socket import socket, AF_UNIX, SOCK_DGRAM
 
-from . import _Server, _Manager
+from . import Server, _Manager
 
-
-class Server(_Server):
-    pass
 
 class Manager(_Manager):
 
@@ -61,7 +58,6 @@ class Manager(_Manager):
 
     def _start_instance(self, server):
         server.is_running = True
-        server.last_active_time = time.time()
         self._sock.send(b'add: ' + json.dumps(server._config).encode())
         self._ok.wait()
         logging.debug('ss-server at %s:%d started.' % (server.host, server.port))
@@ -92,7 +88,6 @@ class Manager(_Manager):
                     logging.warning('Stat from unknown port (%s) received.' % port)
                     continue
                 self._servers[port].traffic = traffic
-                self._servers[port].last_active_time = time.time()
 
 class ServerAlreadyExistError(Exception):
     pass
