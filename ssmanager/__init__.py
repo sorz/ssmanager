@@ -5,7 +5,7 @@ import time
 class Server():
     """Store configuration about one server instance."""
 
-    def __init__(self, port, password, method, host='0.0.0.0', timeout=10,
+    def __init__(self, port, password, method, host='0.0.0.0', timeout=180,
                  udp=True, ota=False, fast_open=True):
         self._traffic = 0
         self._is_running = False
