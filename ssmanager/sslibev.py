@@ -39,6 +39,8 @@ class Manager(_Manager):
 
     def stop(self):
         super().stop()
+        for port, server in self._servers.items():
+            self._stop_instance(server)
         if self._sock is not None:
             self._sock.close()
         if os.path.exists(self._manager_addr):

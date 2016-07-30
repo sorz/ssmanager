@@ -58,8 +58,6 @@ class _Manager():
 
     def stop(self):
         self._is_running = False
-        for port, server in self._servers.items():
-            self._stop_instance(server)
 
     def add(self, server):
         """Add & start a ss-server."""
