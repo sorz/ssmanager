@@ -33,16 +33,27 @@ class Manager(_Manager):
             output = DEVNULL
         args = [self._ss_bin, '--manager-address', self._manager_addr]
         self._ss_proc = Popen(args, stdout=output, stderr=output)
-        time.sleep(0.5)  # Waiting for ssserver started.
         self._sock = socket(AF_UNIX, SOCK_DGRAM)
         self._sock.bind(self._client_addr)
-        self._sock.connect(self._manager_addr)
+        # Waiting for ssserver started.
+        connected = False
+        for t in 0.01, 0.1, 0.2, 0.4, 0.8, 1, 2, 4:
+            time.sleep(t)
+            try:
+                self._sock.connect(self._manager_addr)
+            except FileNotFoundError:
+                pass
+            else:
+                connected = True
+                break
+        if not connected:
+            logging.critical('Cannot connect to ssserver process on %s.',
+                             self._manager_addr)
+            raise SSServerConnectionError()
         self._recv_thread.start()
-        #self._restart_thread.start()
 
         self._sock.send(b'remove: {"server_port": 8388}')
         self._ok.wait()
-
         logging.info('Manager started.')
 
     def stop(self):
@@ -93,3 +104,5 @@ class Manager(_Manager):
 class ServerAlreadyExistError(Exception):
     pass
 
+class SSServerConnectionError(ConnectionError):
+    pass
