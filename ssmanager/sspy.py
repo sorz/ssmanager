@@ -99,7 +99,7 @@ class Manager(_Manager):
                 if port not in self._servers:
                     logging.warning('Stat from unknown port (%s) received.' % port)
                     continue
-                self._servers[port].traffic = traffic
+                self._servers[port].traffic += traffic
 
 class ServerAlreadyExistError(Exception):
     pass
