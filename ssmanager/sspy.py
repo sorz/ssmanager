@@ -41,7 +41,7 @@ class Manager(_Manager):
             time.sleep(t)
             try:
                 self._sock.connect(self._manager_addr)
-            except FileNotFoundError:
+            except (FileNotFoundError, ConnectionRefusedError):
                 pass
             else:
                 connected = True
