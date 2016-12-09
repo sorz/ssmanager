@@ -26,7 +26,7 @@ $ pip install git+https://github.com/sorz/ssmanager.git
 
 Example:
 
-```
+```python
 from ssmanager import Server
 from ssmanager.sslibev import Manager
 # For Python port, use:
