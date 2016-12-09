@@ -49,3 +49,32 @@ manager.stat()
 
 manager.stop()
 ```
+
+It's easy to build multiple-user/port Shadowsocks servers with a centrally
+server who distributes user configurations using ssmanager. A simple example
+is following.
+
+Upload a JSON file to, for example, http://example.com/ss-profiles.json.
+The JSON contains all profiles of Shadowsocks users:
+
+```javascript
+[{port=8001, password='test123', method='chacha20'},
+ {port=8002, password='123test', method='aes-256-cfb'}]
+```
+
+Following script grab this JSON every 2 minutes and update its configs if
+content of the JSON changed. (Exception handling is omited.)
+
+```python
+import time, requests
+from ssmanager import Server
+from ssmanager.sspy import Manager
+
+manager = Manager()
+
+while True:
+    profiles = requests.get('http://example.com/ss-profiles.json').json()
+    manager.update([Server(**p) for p in profiles])
+    time.sleep(120)
+```
+
