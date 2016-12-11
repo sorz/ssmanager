@@ -23,7 +23,6 @@ class Manager(_Manager):
         self._ok = Event()
 
         self._recv_thread = Thread(target=self._receiving, daemon=True)
-        #self._restart_thread = Thread(target=self._restarting_inactive_servers, daemon=True)
 
     def start(self):
         super().start()
@@ -31,7 +30,8 @@ class Manager(_Manager):
             output = None  # inherited from self
         else:
             output = DEVNULL
-        args = [self._ss_bin, '--manager-address', self._manager_addr]
+        args = [self._ss_bin, '--manager-address', self._manager_addr,
+                '-s', '127.0.1.2', '-p', '0']
         self._ss_proc = Popen(args, stdout=output, stderr=output)
         self._sock = socket(AF_UNIX, SOCK_DGRAM)
         self._sock.bind(self._client_addr)
@@ -52,7 +52,7 @@ class Manager(_Manager):
             raise SSServerConnectionError()
         self._recv_thread.start()
 
-        self._sock.send(b'remove: {"server_port": 8388}')
+        self._sock.send(b'remove: {"server": "127.0.1.2"}')
         self._ok.wait()
         logging.info('Manager started.')
 
