@@ -3,11 +3,13 @@ import time
 import json
 import logging
 from subprocess import Popen, DEVNULL
-from threading import Thread, Event
+from threading import Thread, Event, Lock
 from socket import socket, AF_UNIX, SOCK_DGRAM
 
 from . import Server, _Manager
 
+
+SOCK_RESPONSE_TIMEOUT = 10
 
 class Manager(_Manager):
 
@@ -21,6 +23,7 @@ class Manager(_Manager):
         self._manager_addr = manager_addr
         self._client_addr = client_addr
         self._ok = Event()
+        self._sock_lock = Lock()
 
         self._recv_thread = Thread(target=self._receiving, daemon=True)
 
@@ -52,8 +55,9 @@ class Manager(_Manager):
             raise SSServerConnectionError()
         self._recv_thread.start()
 
+        # Don't acquire sock lock here.
         self._sock.send(b'remove: {"server": "127.0.1.2"}')
-        self._ok.wait()
+        self._wait_ok()
         logging.info('Manager started.')
 
     def stop(self):
@@ -67,19 +71,27 @@ class Manager(_Manager):
         if os.path.exists(self._client_addr):
             os.remove(self._client_addr)
 
+    def _wait_ok(self):
+        """Waiting for SS process return "ok" via socket."""
+        if not self._ok.wait(SOCK_RESPONSE_TIMEOUT):
+            raise SSServerConnectionTimeout()
+
     def _start_instance(self, server):
         server.is_running = True
         config = server._config.copy()
         config['one_time_auth'] = config.pop('auth')
-        self._sock.send(b'add: ' + json.dumps(config).encode())
-        self._ok.wait()
+        with self._sock_lock:
+            self._sock.send(b'add: ' + json.dumps(config).encode())
+            self._wait_ok()
         logging.debug('ss-server at %s:%d started.' % (server.host, server.port))
 
     def _stop_instance(self, server):
         server.is_running = False
-        self._sock.send(b'remove: {"server_port":' + str(server.port).encode() + b'}')
-        self._ok.wait()
+        with self._sock_lock:
+            self._sock.send(b'remove: {"server_port":' + str(server.port).encode() + b'}')
+            self._wait_ok()
         logging.debug('ss-server at %s:%d stopped.' % (server.host, server.port))
+
 
     def _receiving(self):
         while self._is_running:
@@ -105,4 +117,7 @@ class ServerAlreadyExistError(Exception):
     pass
 
 class SSServerConnectionError(ConnectionError):
+    pass
+
+class SSServerConnectionTimeout(SSServerConnectionError):
     pass
