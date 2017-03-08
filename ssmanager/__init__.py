@@ -2,6 +2,8 @@ import logging
 import time
 
 
+__version__ = '0.2.5'
+
 class Server():
     """Store configuration about one server instance."""
 
