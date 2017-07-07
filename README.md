@@ -71,6 +71,7 @@ from ssmanager import Server
 from ssmanager.sspy import Manager
 
 manager = Manager()
+manager.start()
 
 while True:
     profiles = requests.get('http://example.com/ss-profiles.json').json()
