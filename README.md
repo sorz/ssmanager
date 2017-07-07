@@ -58,8 +58,8 @@ Upload a JSON file to, for example, http://example.com/ss-profiles.json.
 The JSON contains all profiles of Shadowsocks users:
 
 ```javascript
-[{port=8001, password='test123', method='chacha20'},
- {port=8002, password='123test', method='aes-256-cfb'}]
+[{"port": 8001, "password": "test123", "method": "chacha20"},
+ {"port": 8002, "password": "123test", "method": "aes-256-cfb"}]
 ```
 
 Following script grab this JSON every 2 minutes and update its configs if
