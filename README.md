@@ -37,7 +37,7 @@ manager = Manager(ss_bin='/usr/bin/ss-server')
 manager.start()
 
 server = Server(1234, 'password', 'aes-256-cfb',
-                udp=True, ota=True, fast_open=True)
+                udp=True, fast_open=True)
 manager.add(server)
 manager.remove(server)  # Or manager.remove(1234)
 
