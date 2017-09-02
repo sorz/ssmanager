@@ -91,7 +91,6 @@ class Manager(_Manager):
     def _start_instance(self, server):
         server.is_running = True
         config = server._config.copy()
-        config['one_time_auth'] = config.pop('auth')
         self._send('add: ' + json.dumps(config))
         logging.debug('ss-server at %s:%d started.' % (server.host, server.port))
 
