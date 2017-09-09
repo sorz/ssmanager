@@ -8,7 +8,7 @@ class Server():
     """Store configuration about one server instance."""
 
     def __init__(self, port, password, method, host='0.0.0.0', timeout=180,
-                 udp=True, fast_open=True):
+                 udp=True, fast_open=True, **extra_config):
         self._traffic = 0
         self._is_running = False
         self.port = port
@@ -16,6 +16,7 @@ class Server():
         self._udp = udp
         self._config = dict(server_port=port, password=password, method=method,
                             server=host, timeout=timeout, fast_open=fast_open)
+        self._config.update(extra_config)
 
     def __eq__(self, other):
         if not isinstance(other, Server):
