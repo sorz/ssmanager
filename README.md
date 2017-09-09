@@ -79,3 +79,9 @@ while True:
     time.sleep(120)
 ```
 
+## Related projects
+- [ssmanager-nopanel](https://github.com/fzinfz/ssmanager-nopanel):
+  ssmanager web daemon, supports multi methods & influxdb.
+- [yassp-server](https://github.com/sorz/yassp-server):
+   manage Shadowsocks server instances via HTTP APIs.
+
