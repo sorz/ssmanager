@@ -2,7 +2,7 @@ import logging
 import time
 
 
-__version__ = '0.2.7'
+__version__ = '0.2.8'
 
 class Server():
     """Store configuration about one server instance."""
